@@ -1,40 +1,42 @@
 package mailscape;
 
 import javax.mail.*;
-import javax.activation.*;
-import java.util.*;
-import javax.mail.internet.*;
-import java.io.*;
-import javax.swing.JFileChooser;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeBodyPart;
+import javax.mail.internet.MimeMessage;
+import javax.mail.internet.MimeMultipart;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.util.Properties;
+import java.util.Scanner;
 
-public class MailConnect {
+public class MailSender {
     public static void main(String[] args) throws FileNotFoundException {
         Scanner sc = new Scanner(System.in);
-        String from = getCredentials()[0];
+        String from = Credentials.getCredentials()[0];
         String to = sc.nextLine();
         String sub = sc.nextLine();
         String body = sc.nextLine();
         actuallySendMail(from, to, sub, body);
     }
 
-    public static String [] getCredentials() throws FileNotFoundException {
-        File homedir = new File(System.getProperty("user.home"));
-        Scanner sc = new Scanner(new File(homedir+"/Public/credentials.txt"));
-        String email = sc.nextLine();
-        String token = sc.nextLine();
-        return new String[]{email, token};
-    }
-
     public static void actuallySendMail(String from, String to, String sub, String body) throws FileNotFoundException {
         Properties props = new Properties();
-        props.put("mail.smtp.host", "smtp.gmail.com");
-        props.put("mail.smtp.socketFactory.port", "465");
-        props.put("mail.smtp.socketFactory.class",
-                "javax.net.ssl.SSLSocketFactory");
-        props.put("mail.smtp.auth", "true");
-        props.put("mail.smtp.port", "465");
 
-        String[] credentials = getCredentials();
+        // enable authentication
+        props.put("mail.smtp.auth", "true");
+
+        // enable STARTTLS
+        props.put("mail.smtp.starttls.enable", "true");
+
+        // Setup mail server
+        props.put("mail.smtp.host", "smtp.gmail.com");
+
+        // TLS Port
+        props.put("mail.smtp.port", "587");
+
+        String[] credentials = Credentials.getCredentials();
         String username = credentials[0];
         String password = credentials[1];
 
