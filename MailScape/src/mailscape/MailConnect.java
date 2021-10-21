@@ -1,8 +1,11 @@
+package mailscape;
+
 import javax.mail.*;
 import javax.activation.*;
 import java.util.*;
 import javax.mail.internet.*;
 import java.io.*;
+import javax.swing.JFileChooser;
 
 public class MailConnect {
     public static void main(String[] args) throws FileNotFoundException {
@@ -46,10 +49,32 @@ public class MailConnect {
             message.setFrom(new InternetAddress(from));
             message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(to));
             message.setSubject(sub);
-            message.setContent(body, "text/html");
+
+            FilePicker ob = new FilePicker();
+            File[] file_paths = ob.getPath();
+            if(file_paths.length != 0) {
+                Multipart multipart = new MimeMultipart();
+
+                // sending the text
+                BodyPart messageBodyPath = new MimeBodyPart();
+                messageBodyPath.setContent(body, "text/html");
+                multipart.addBodyPart(messageBodyPath);
+
+                // sending the attachment
+                for(File path : file_paths) {
+                    MimeBodyPart file = new MimeBodyPart();
+                    String path_as_string = path.toString();
+                    file.attachFile(path_as_string);
+                    multipart.addBodyPart(file);
+                }
+
+                message.setContent(multipart, "text/html");
+            } else {
+                message.setContent(body, "text/html");
+            }
 
             Transport.send(message);
-        } catch (MessagingException e) {
+        } catch (MessagingException | IOException e) {
             e.printStackTrace();
         }
     }
