@@ -1,18 +1,24 @@
 package project;
 
+import java.beans.Statement;
 import java.io.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.util.*;
 import javax.mail.*;
 import javax.mail.internet.*;
+
+//import com.mysql.cj.protocol.Resultset;
 
 public class ReceiveMailImap {
 
   public ReceiveMailImap() {}
 
-  //
-  // inspired by :
-  // http://www.mikedesjardins.net/content/2008/03/using-javamail-to-read-and-extract/
-  //
+  public static String fromList[] = new String[5];
+  public static String subList[] = new String[5];
+  public static String bodyList[] = new String[5];
+  public static int length = 0;
 
   public static void doit() throws MessagingException, IOException {
     Folder folder = null;
@@ -39,7 +45,7 @@ public class ReceiveMailImap {
       System.out.println("No of Messages : " + folder.getMessageCount());
       System.out.println("No of Unread Messages : " + folder.getUnreadMessageCount());
       int n = folder.getMessageCount();
-      for (int i=n-1; i > n-3; i--) {
+      for (int i=n-1; i >= n-5; i--) {
         System.out.println("MESSAGE #" + (i + 1) + ":");
         Message msg = messages[i];
         /*
@@ -56,7 +62,9 @@ public class ReceiveMailImap {
         else if (msg.getFrom().length >= 1) {
           from = msg.getFrom()[0].toString();
         }
+        fromList[n-1-i] = from;
         String subject = msg.getSubject();
+        subList[n-1-i] = subject;
         String body = "";
         
         if(msg.isMimeType("text/plain")) {
@@ -67,6 +75,7 @@ public class ReceiveMailImap {
         	
         	body = getTextFromMimeMultipart(mimeMultipart);
         }
+        bodyList[n-1-i] = body;
         System.out.println("Subject : " + subject +"\n From : " + from + "\n body : " + body);
         // you may want to replace the spaces with "_"
         // the TEMP directory is used to store the files
@@ -76,6 +85,12 @@ public class ReceiveMailImap {
         // to delete the message
         // msg.setFlag(Flags.Flag.DELETED, true);
       }
+      
+      Scanner sc = new Scanner(System.in);
+      
+      System.out.print("Enter mail no to star : ");
+      int x = sc.nextInt();
+      starMail(x-1);
     }
     finally {
       if (folder != null) { folder.close(true); }
@@ -83,7 +98,34 @@ public class ReceiveMailImap {
     }
   }
 
-  private static String getTextFromMimeMultipart(MimeMultipart mimeMultipart) throws MessagingException {
+  private static void starMail(int x) {
+	
+	  try {
+		  Class.forName("com.mysql.cj.jdbc.Driver");
+		  String db_url ="jdbc:mysql://localhost:3306/mailscapedb";
+		  Connection con = DriverManager.getConnection(db_url, "root","Gani@4264");
+		  
+		  java.sql.Statement stmt =con.createStatement();
+//		  ResultSet rs = stmt.executeQuery("select * from star_mail");
+		  
+		  bodyList[x] = bodyList[x].replace("'", "\\'");
+		  subList[x] = subList[x].replace("'", "\\'");
+		  
+		  String sqlInsert = "INSERT INTO star_mail (name , sub , body )" + "Values ('"+
+		              fromList[x] + "','" + subList[x] + "','" + bodyList[x] + "');";
+		  
+		  int countInserted = stmt.executeUpdate(sqlInsert);
+		  
+		  if(countInserted != 0) {
+			  System.out.println("Email is starred succesfully");
+		  }
+		  
+	  }catch(Exception e) {
+		  System.out.println(e);
+	  }
+}
+
+private static String getTextFromMimeMultipart(MimeMultipart mimeMultipart) throws MessagingException {
 	  
 	 String ans = "";
   	int multipartCount = mimeMultipart.getCount();
