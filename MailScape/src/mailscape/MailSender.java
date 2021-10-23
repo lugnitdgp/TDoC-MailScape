@@ -18,10 +18,13 @@ public class MailSender {
         String to = sc.nextLine();
         String sub = sc.nextLine();
         String body = sc.nextLine();
-        actuallySendMail(from, to, sub, body);
+        FilePicker ob = new FilePicker();
+        File[] file_paths = ob.getPath();
+        boolean success = actuallySendMail(from, to, sub, body, file_paths);
+        if(success) System.out.println("Successfuly sent mail");
     }
 
-    public static void actuallySendMail(String from, String to, String sub, String body) throws FileNotFoundException {
+    public static boolean actuallySendMail(String from, String to, String sub, String body, File[] file_paths) throws FileNotFoundException {
         Properties props = new Properties();
 
         // enable authentication
@@ -52,9 +55,7 @@ public class MailSender {
             message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(to));
             message.setSubject(sub);
 
-            FilePicker ob = new FilePicker();
-            File[] file_paths = ob.getPath();
-            if(file_paths.length != 0) {
+            if(file_paths != null && file_paths.length != 0) {
                 Multipart multipart = new MimeMultipart();
 
                 // sending the text
@@ -76,8 +77,10 @@ public class MailSender {
             }
 
             Transport.send(message);
+            return true;
         } catch (MessagingException | IOException e) {
             e.printStackTrace();
+            return false;
         }
     }
 }
