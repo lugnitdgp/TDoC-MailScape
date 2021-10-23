@@ -10,6 +10,9 @@ public class Credentials {
         Scanner sc = new Scanner(new File(homedir+"/Public/credentials.txt"));
         String email = sc.nextLine();
         String token = sc.nextLine();
-        return new String[]{email, token};
+        String db_url = sc.nextLine();
+        String db_user = sc.nextLine();
+        String db_password = sc.nextLine();
+        return new String[]{email, token, db_url, db_user, db_password};
     }
 }

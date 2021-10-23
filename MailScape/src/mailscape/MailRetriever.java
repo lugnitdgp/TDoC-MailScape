@@ -7,7 +7,12 @@ import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMultipart;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Properties;
+import java.util.Scanner;
 
 public class MailRetriever {
     public static void main(String[] args) throws FileNotFoundException {
@@ -17,7 +22,7 @@ public class MailRetriever {
         String password = Credentials.getCredentials()[1];
         String port = "993";
 
-        downloadEmails(protocol, host, port, user_name, password, 20);
+        getEmails(protocol, host, port, user_name, password, 3);
     }
 
     public static @NotNull
@@ -38,8 +43,12 @@ public class MailRetriever {
         return properties;
     }
 
-    public static void downloadEmails(String protocol, String host, String port, String user_name, String password,
-                                      int mail_count) {
+    public static void getEmails(String protocol, String host, String port, String user_name, String password,
+                                 int mail_count) {
+        
+        String[] fromList = new String[mail_count];
+        String[] subjectList = new String[mail_count];
+        String[] bodyList = new String[mail_count];
         Properties properties = getServerProperties(protocol, host, port);
         Session session = Session.getDefaultInstance(properties);
         try {
@@ -56,7 +65,7 @@ public class MailRetriever {
             int n = messages.length;
 
 
-            for(int i = n-1; i>=n-mail_count; i--) {
+            for (int i = n - 1; i >= n - mail_count; i--) {
                 Message msg = messages[i];
 
                 InternetAddress sender = (InternetAddress) msg.getFrom()[0];
@@ -67,7 +76,7 @@ public class MailRetriever {
                     bodypart = msg.getContent().toString();
                 }
 
-                if(msg.isMimeType("multipart/*")) {
+                if (msg.isMimeType("multipart/*")) {
                     try {
                         MimeMultipart mimeMultipart = (MimeMultipart) msg.getContent();
                         bodypart = getTextFromMimeMultipart(mimeMultipart).toString();
@@ -76,13 +85,24 @@ public class MailRetriever {
                     }
                 }
 
+                bodypart = bodypart.replaceAll("(?m)^[ \t]*\r?\n", "");
+
+                fromList[n-1-i] = from;
+                subjectList[n-1-i] = subject;
+                bodyList[n-1-i] = bodypart;
+
                 System.out.println();
-                System.out.println(n-i+")");
+                System.out.println(n - i + ")");
                 System.out.println("FROM : " + from);
                 System.out.println("SUBJECT : " + subject);
                 System.out.println("BODY : " + bodypart);
                 System.out.println();
             }
+
+            System.out.print("Enter mail number to star: ");
+            Scanner sc = new Scanner(System.in);
+            int x = sc.nextInt();
+            starMail(fromList[x-1],subjectList[x-1], bodyList[x-1]);
 
             // disconnect
             folderInbox.close(false);
@@ -97,9 +117,9 @@ public class MailRetriever {
         StringBuilder result = new StringBuilder();
         int count = mimeMultipart.getCount();
         try {
-            for(int i = 0; i<count;i++) {
+            for (int i = 0; i < count; i++) {
                 BodyPart bodyPart = mimeMultipart.getBodyPart(i);
-                if(bodyPart.isMimeType("text/plain")) {
+                if (bodyPart.isMimeType("text/plain")) {
                     result.append(bodyPart.getContent());
                     break;
                 } else if (bodyPart.isMimeType("text/html")) {
@@ -112,5 +132,28 @@ public class MailRetriever {
             e.printStackTrace();
         }
         return result;
+    }
+
+    public static void starMail(String from, String subject, String body) {
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            String[] credentials = Credentials.getCredentials();
+            Connection con = DriverManager.getConnection(credentials[2], credentials[3], credentials[4]);
+            Statement statement = con.createStatement();
+
+            body = body.replace("'", "\\'");
+            String sqlInsert =
+                    "INSERT INTO star_mail (sender, subject, body) VALUES ( '" + from + "', '" + subject + "', '" + body +
+                            "');";
+            System.out.println(sqlInsert);
+            int countInserted = statement.executeUpdate(sqlInsert);
+            if (countInserted != 0) {
+                System.out.println("Email is starred successfully");
+            }
+            
+            con.close();
+        } catch (ClassNotFoundException | FileNotFoundException | SQLException e) {
+            e.printStackTrace();
+        }
     }
 }
