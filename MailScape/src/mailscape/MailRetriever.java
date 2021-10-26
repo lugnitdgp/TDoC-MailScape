@@ -22,7 +22,7 @@ public class MailRetriever {
         String password = Credentials.getCredentials()[1];
         String port = "993";
 
-        getEmails(protocol, host, port, user_name, password, 3);
+        printEmails(protocol, host, port, user_name, password, 3);
     }
 
     public static @NotNull
@@ -43,8 +43,8 @@ public class MailRetriever {
         return properties;
     }
 
-    public static void getEmails(String protocol, String host, String port, String user_name, String password,
-                                 int mail_count) {
+    public static void printEmails(String protocol, String host, String port, String user_name, String password,
+                                   int mail_count) {
         
         String[] fromList = new String[mail_count];
         String[] subjectList = new String[mail_count];
