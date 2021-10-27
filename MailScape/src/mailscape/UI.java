@@ -2,11 +2,11 @@ package mailscape;
 
 import com.sun.mail.gimap.GmailMessage;
 import com.sun.mail.gimap.GmailMsgIdTerm;
+import org.jetbrains.annotations.NotNull;
 
 import javax.mail.*;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeBodyPart;
-import javax.mail.internet.MimeMultipart;
 import javax.swing.*;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
@@ -15,23 +15,40 @@ import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import java.util.regex.Pattern;
 
 import static mailscape.MailRetriever.getServerProperties;
-import static mailscape.MailRetriever.getTextFromMimeMultipart;
+
+class allMailDetails {
+    public String from;
+    public String subject;
+    public String body;
+    public long uid;
+    public allMailDetails(String from, String subject, String body, long uid) {
+        super();
+        this.from = from;
+        this.subject = subject;
+        this.body = body;
+        this.uid = uid;
+    }
+}
 
 public class UI {
     // Global State Variables
-    private final int mail_count = 10;
-    private final String[] list_from = new String[mail_count];
-    private final String[] list_subject = new String[mail_count];
-    private final String[] list_body = new String[mail_count];
-    private final long [] list_uids = new long[mail_count];
-    private int current_mail_index = -1;
+    private static final int mail_count = 10;
+    private static final String[] list_from = new String[mail_count];
+    private static final String[] list_subject = new String[mail_count];
+    private static final String[] list_body = new String[mail_count];
+    private static final long [] list_uids = new long[mail_count];
+    private static int current_mail_index = -1;
+    private  static int current_swing_worker_index = 0;
     private String send_from = "", send_to = "", send_subject = "", send_body = "";
+    DefaultListModel<String> subjectDefaultListModel = new DefaultListModel<>();
 
     // UI elements
     private JTabbedPane Tabs;
@@ -59,6 +76,8 @@ public class UI {
     private JTextPane textPaneFrom;
     private JPanel all_mail_right;
     private JLabel labelUID;
+    private JLabel labelRefreshedTime;
+    private JLabel labelDownloadFinished;
     private File[] send_file_paths;
 
     public UI() {
@@ -93,70 +112,93 @@ public class UI {
             }
         });
         buttonRefreshList.addActionListener(e -> {
-            try {
-                String protocol = "gimap";
-                String host = "imap.gmail.com";
-                String user_name = Credentials.getCredentials()[0];
-                String password = Credentials.getCredentials()[1];
-                String port = "993";
-                Properties properties = getServerProperties(protocol, host, port);
-                Session session = Session.getDefaultInstance(properties);
+            listSubjects.setModel(subjectDefaultListModel);
+            SwingWorker <Boolean, allMailDetails> getListSubjects = new SwingWorker<>() {
+                @Override
+                protected @NotNull Boolean doInBackground() {
+                    try {
+                        String protocol = "gimap";
+                        String host = "imap.gmail.com";
+                        String user_name = Credentials.getCredentials()[0];
+                        String password = Credentials.getCredentials()[1];
+                        String port = "993";
+                        Properties properties = getServerProperties(protocol, host, port);
+                        Session session = Session.getDefaultInstance(properties);
 
-                //connects to the message store
-                Store store = session.getStore(protocol);
-                store.connect(user_name, password);
+                        //connects to the message store
+                        Store store = session.getStore(protocol);
+                        store.connect(user_name, password);
 
-                //opens the inbox folder
-                Folder GmailInbox = store.getFolder("[Gmail]/All Mail");
-                GmailInbox.open(Folder.READ_WRITE);
+                        //opens the inbox folder
+                        Folder GmailInbox = store.getFolder("[Gmail]/All Mail");
+                        GmailInbox.open(Folder.READ_WRITE);
 
-                //fetches new messages from server
-                Message[] messages = GmailInbox.getMessages();
-                int n = messages.length;
+                        //fetches new messages from server
+                        Message[] messages = GmailInbox.getMessages();
+                        int n = messages.length;
 
-                for (int i = n - 1; i >= n - mail_count; i--) {
-                    Message msg = messages[i];
+                        for (int i = n - 1; i >= n - mail_count; i--) {
+                            Message msg = messages[i];
 
-                    InternetAddress sender = (InternetAddress) msg.getFrom()[0];
-                    String from = sender.getAddress();
-                    String subject = msg.getSubject();
-                    StringBuilder body = new StringBuilder();
+                            InternetAddress sender = (InternetAddress) msg.getFrom()[0];
+                            String from = sender.getAddress();
+                            String subject = msg.getSubject();
+                            StringBuilder body = new StringBuilder();
 
-                    Object content = msg.getContent();
-                    if (content instanceof Multipart) {
-                        Multipart multipart = (Multipart) content;
-                        for(int j = 0; j < multipart.getCount(); j++) {
-                            BodyPart bodyPart = multipart.getBodyPart(j);
-                            if(Pattern.compile(Pattern.quote("text/html"), Pattern.CASE_INSENSITIVE).matcher(bodyPart.getContentType()).find()) {
-                                // html part found
-                                body.append((String) bodyPart.getContent());
+                            Object content = msg.getContent();
+                            if (content instanceof Multipart) {
+                                Multipart multipart = (Multipart) content;
+                                for (int j = 0; j < multipart.getCount(); j++) {
+                                    BodyPart bodyPart = multipart.getBodyPart(j);
+                                    if (Pattern.compile(Pattern.quote("text/html"), Pattern.CASE_INSENSITIVE).matcher(bodyPart.getContentType()).find()) {
+                                        // html part found
+                                        body.append((String) bodyPart.getContent());
+                                    }
+                                }
                             }
+
+                            if (body.length() == 0 && msg.isMimeType("text/plain")) {
+                                body.append(msg.getContent().toString());
+                            }
+
+
+                            GmailMessage gmailMessage = (GmailMessage) messages[i];
+                            long uid = gmailMessage.getMsgId();
+                            publish(new allMailDetails(from, subject, body.toString(), uid));
                         }
+
+                        // disconnect
+                        GmailInbox.close(false);
+                        store.close();
+
+                    } catch (MessagingException | IOException expc) {
+                        expc.printStackTrace();
                     }
-
-                    if(body.length() == 0 && msg.isMimeType("text/plain")) {
-                        body.append(msg.getContent().toString());
-                    }
-
-
-
-                    GmailMessage gmailMessage = (GmailMessage)messages[i];
-                    long uid = gmailMessage.getMsgId();
-
-                    list_from[n - 1 - i] = from;
-                    list_subject[n - 1 - i] = subject;
-                    list_body[n - 1 - i] = body.toString();
-                    list_uids[n-1-i] = uid;
+                    return true;
                 }
 
-                // disconnect
-                GmailInbox.close(false);
-                store.close();
+                @Override
+                protected void process(@NotNull List<allMailDetails> chunks) {
+                    for (allMailDetails a : chunks) {
+                        list_from[current_swing_worker_index] = a.from;
+                        list_subject[current_swing_worker_index] = a.subject;
+                        list_body[current_swing_worker_index] = a.body;
+                        list_uids[current_swing_worker_index] = a.uid;
+                        current_swing_worker_index++;
+                        subjectDefaultListModel.addElement(a.subject);
+                    }
+                }
 
-            } catch (MessagingException | IOException expc) {
-                expc.printStackTrace();
-            }
-            listSubjects.setListData(list_subject);
+                @Override
+                protected void done() {
+                    DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+                    LocalDateTime now = LocalDateTime.now();
+                    labelRefreshedTime.setText("Last Refreshed : " + dateTimeFormatter.format(now));
+                }
+            };
+            subjectDefaultListModel.clear();
+            current_swing_worker_index = 0;
+            getListSubjects.execute();
         });
         listSubjects.addListSelectionListener(new ListSelectionListener() {
             @Override
@@ -171,7 +213,10 @@ public class UI {
                         current_mail_index = i;
                         textPaneFrom.setText(list_from[i]);
                         textPaneSubject.setText(list_subject[i]);
-                        editorPaneBody.setText(list_body[i]);
+                        editorPaneBody.setContentType("text/html");
+                        String body = list_body[i].replaceAll("<style([\\s\\S]+?)</style>","");
+                        String html_body = "<html><body>" + body + "</body></html>";
+                        editorPaneBody.setText(html_body);
                         labelUID.setText(String.valueOf(list_uids[i]));
                     }
                 }
@@ -180,47 +225,59 @@ public class UI {
         bDownloadAttachment.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                try {
-                    String protocol = "gimap";
-                    String host = "imap.gmail.com";
-                    String user_name = Credentials.getCredentials()[0];
-                    String password = Credentials.getCredentials()[1];
-                    String port = "993";
-                    Properties properties = getServerProperties(protocol, host, port);
-                    Session session = Session.getDefaultInstance(properties);
+                SwingWorker<Void, Void> downloadWorker = new SwingWorker<>() {
+                    @Override
+                    protected Void doInBackground() {
+                        try {
+                            String protocol = "gimap";
+                            String host = "imap.gmail.com";
+                            String user_name = Credentials.getCredentials()[0];
+                            String password = Credentials.getCredentials()[1];
+                            String port = "993";
+                            Properties properties = getServerProperties(protocol, host, port);
+                            Session session = Session.getDefaultInstance(properties);
 
-                    //connects to the message store
-                    Store store = session.getStore(protocol);
-                    store.connect(user_name, password);
+                            //connects to the message store
+                            Store store = session.getStore(protocol);
+                            store.connect(user_name, password);
 
-                    //opens the inbox folder
-                    Folder GmailInbox = store.getFolder("[Gmail]/All Mail");
-                    GmailInbox.open(Folder.READ_WRITE);
+                            //opens the inbox folder
+                            Folder GmailInbox = store.getFolder("[Gmail]/All Mail");
+                            GmailInbox.open(Folder.READ_WRITE);
 
-                    long msgid = list_uids[current_mail_index];
-                    Message[] messages = GmailInbox.search(new GmailMsgIdTerm(msgid));
-                    Message msg = messages[0];
+                            long msgid = list_uids[current_mail_index];
+                            Message[] messages = GmailInbox.search(new GmailMsgIdTerm(msgid));
+                            Message msg = messages[0];
 
-                    String downloadDirectory = System.getProperty("user.home");
-                    List<String> downloadedAttachments = new ArrayList<String>();
-                    Multipart multiPart = (Multipart) msg.getContent();
-                    int numberOfParts = multiPart.getCount();
-                    for (int partCount = 0; partCount < numberOfParts; partCount++) {
-                        MimeBodyPart part = (MimeBodyPart) multiPart.getBodyPart(partCount);
-                        if (Part.ATTACHMENT.equalsIgnoreCase(part.getDisposition())) {
-                            String file = part.getFileName();
-                            part.saveFile(downloadDirectory + File.separator + part.getFileName());
-                            downloadedAttachments.add(file);
+                            String downloadDirectory = System.getProperty("user.home") + "/Public";
+                            List<String> downloadedAttachments = new ArrayList<>();
+                            Multipart multiPart = (Multipart) msg.getContent();
+                            int numberOfParts = multiPart.getCount();
+                            for (int partCount = 0; partCount < numberOfParts; partCount++) {
+                                MimeBodyPart part = (MimeBodyPart) multiPart.getBodyPart(partCount);
+                                if (Part.ATTACHMENT.equalsIgnoreCase(part.getDisposition())) {
+                                    String file = part.getFileName();
+                                    part.saveFile(downloadDirectory + File.separator + part.getFileName());
+                                    downloadedAttachments.add(file);
+                                }
+                            }
+
+                            // disconnect
+                            GmailInbox.close(false);
+                            store.close();
+
+                        } catch (MessagingException | IOException expc) {
+                            expc.printStackTrace();
                         }
+                        return null;
                     }
 
-                    // disconnect
-                    GmailInbox.close(false);
-                    store.close();
-
-                } catch (MessagingException | IOException expc) {
-                    expc.printStackTrace();
-                }
+                    @Override
+                    protected void done() {
+                        labelDownloadFinished.setText("Download finished");
+                    }
+                };
+                downloadWorker.execute();
             }
         });
     }
