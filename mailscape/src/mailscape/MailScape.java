@@ -463,10 +463,17 @@ public class MailScape extends javax.swing.JFrame implements MouseListener {
         jLabel5.setText("Sending.....");
         jLabel5.paintImmediately(jLabel5.getVisibleRect());
         Send_Mail ob=new Send_Mail(jTextField5.getText(),jTextField4.getText(),jTextArea1.getText(),path,USER,PASS);
-       
-        ob.send_mail();
+       boolean flag=true;
+        try{ob.send_mail();}
+        catch(Exception ex){
+            flag=false;
+            jLabel5.setText("INCORRECT CREDENTIALS");
+            jLabel5.paintImmediately(jLabel5.getVisibleRect());
+        }
         
-        jLabel5.setText("Message Sent"); jLabel5.paintImmediately(jLabel5.getVisibleRect());}
+        if(flag){
+        
+        jLabel5.setText("Message Sent"); jLabel5.paintImmediately(jLabel5.getVisibleRect());}}
         
          
        

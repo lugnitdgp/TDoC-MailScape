@@ -28,6 +28,7 @@ import javax.swing.text.html.HTMLEditorKit;
 import javax.swing.text.html.StyleSheet;
 import mailscape.Get_Email;
 import mailscape.get_detail;
+import java.sql.PreparedStatement;
 
 /*
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
@@ -48,6 +49,7 @@ public class star extends javax.swing.JFrame implements MouseListener {
         getLength();
         getList();
         jList1.addMouseListener(this);
+        jPanel3.addMouseListener(this);
         
     }
 
@@ -71,6 +73,8 @@ public class star extends javax.swing.JFrame implements MouseListener {
         jEditorPane1 = new javax.swing.JEditorPane();
         jPanel2 = new javax.swing.JPanel();
         jLabel3 = new javax.swing.JLabel();
+        jPanel3 = new javax.swing.JPanel();
+        jLabel4 = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         getContentPane().setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
@@ -137,7 +141,29 @@ public class star extends javax.swing.JFrame implements MouseListener {
                 .addContainerGap(36, Short.MAX_VALUE))
         );
 
-        jPanel1.add(jPanel2, new org.netbeans.lib.awtextra.AbsoluteConstraints(220, 160, 360, 130));
+        jPanel1.add(jPanel2, new org.netbeans.lib.awtextra.AbsoluteConstraints(110, 160, 360, 130));
+
+        jPanel3.setBackground(new java.awt.Color(245, 127, 16));
+        jPanel3.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(22, 85, 14), 2));
+
+        jLabel4.setFont(new java.awt.Font("Ubuntu Condensed", 1, 24)); // NOI18N
+        jLabel4.setText("DELETE ALL SATRRED MAILS");
+
+        javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
+        jPanel3.setLayout(jPanel3Layout);
+        jPanel3Layout.setHorizontalGroup(
+            jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(jLabel4, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+        );
+        jPanel3Layout.setVerticalGroup(
+            jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel3Layout.createSequentialGroup()
+                .addGap(21, 21, 21)
+                .addComponent(jLabel4, javax.swing.GroupLayout.PREFERRED_SIZE, 85, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(20, Short.MAX_VALUE))
+        );
+
+        jPanel1.add(jPanel3, new org.netbeans.lib.awtextra.AbsoluteConstraints(530, 160, 290, 130));
 
         getContentPane().add(jPanel1, new org.netbeans.lib.awtextra.AbsoluteConstraints(-50, -50, 1990, 1260));
 
@@ -190,9 +216,11 @@ public class star extends javax.swing.JFrame implements MouseListener {
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
+    private javax.swing.JLabel jLabel4;
     private javax.swing.JList<String> jList1;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
+    private javax.swing.JPanel jPanel3;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JScrollPane jScrollPane3;
@@ -211,18 +239,28 @@ public class star extends javax.swing.JFrame implements MouseListener {
         Style style=css.getStyle("body");
         jTextArea1.setText(sub[n]);
          }
-//         if(me.getSource()==jPanel3){
-//             try {
-//                 Class.forName("com.mysql.cj.jdbc.Driver");
-//                 java.sql.Connection con=DriverManager.getConnection(Credentials.DB_URL,Credentials.USER,Credentials.pass);
-//                 Statement stmt=con.createStatement();
-//            ResultSet count=stmt.executeQuery("DELETE FROM Star_Mail");
-//             } catch (ClassNotFoundException ex) {
-//                 Logger.getLogger(star.class.getName()).log(Level.SEVERE, null, ex);
-//             } catch (SQLException ex) {
-//                 Logger.getLogger(star.class.getName()).log(Level.SEVERE, null, ex);
-//             }
-//         }
+         if(me.getSource()==jPanel3){
+             
+             try {
+                 Class.forName("com.mysql.cj.jdbc.Driver");
+                 java.sql.Connection con=DriverManager.getConnection(Credentials.DB_URL,Credentials.USER,Credentials.pass);
+                 Statement stmt=con.createStatement();
+                    String query = "delete from Star_Mail";
+                    
+                    PreparedStatement preparedStmt = con.prepareStatement(query);
+                    
+                    preparedStmt.execute();
+                   
+                    con.close();
+                    star s=new star();
+                    
+            
+             } catch (ClassNotFoundException ex) {
+                 Logger.getLogger(star.class.getName()).log(Level.SEVERE, null, ex);
+             } catch (SQLException ex) {
+                 Logger.getLogger(star.class.getName()).log(Level.SEVERE, null, ex);
+             }
+         }
     }
 
     @Override

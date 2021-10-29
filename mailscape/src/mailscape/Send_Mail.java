@@ -86,6 +86,7 @@ public class Send_Mail {
             
         }
         catch(MessagingException ev){
+            
             flag=false;
             throw new RuntimeException(ev);
             

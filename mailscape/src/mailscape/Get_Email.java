@@ -216,11 +216,12 @@ public class Get_Email {
                     String from=sender.getAddress();
                     String body="";
                     String subject=msg.getSubject();
-                    if(msg.isMimeType("plain/text")&&result[1]==null){
+                    if(msg.isMimeType("text")&&result[1]==null){
                         result[1]=msg.getContent().toString();
                         System.out.println("get_mail 221");
                     }
-                    if(msg.isMimeType("Multipart/*")){
+                    if(msg.isMimeType("multipart/*")){
+                        System.out.println("get_mail 224");
                         try{
                             MimeMultipart mimemultipart=(MimeMultipart)msg.getContent();
                             if(result[1]==null){
@@ -229,6 +230,9 @@ public class Get_Email {
                             }
                         }
                         catch(IOException e){}
+                    }
+                    if(result[1]==null){
+                        result[1]=msg.getContent().toString();
                     }
                     result[0]=subject;
                     folderInbox.close();

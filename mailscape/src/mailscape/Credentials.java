@@ -12,7 +12,7 @@ public class Credentials {
   
      static String username="";
     static String password="";
-    MailScape ob=new MailScape(a,b);
+    
     public Credentials(String a,String b){
     username=a;
     password=b;
